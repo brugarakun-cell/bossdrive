@@ -547,7 +547,7 @@ class VehicleUnitTest extends TestCase
         $this->assertSame('2026-10-12', $scheduleEntry['end']);
     }
 
-    public function test_vehicle_specs_follow_the_selected_unit_across_reservation_modals(): void
+    public function test_staff_reservation_actions_render_with_selected_vehicle_specs(): void
     {
         $user = User::factory()->create();
         $unit = Vehicle::create([
@@ -624,6 +624,9 @@ class VehicleUnitTest extends TestCase
         $this->assertStringContainsString('"vehicleTransmission":"Automatic"', $staffPage->getContent());
         $this->assertStringContainsString('"vehicleFuel":"Diesel"', $staffPage->getContent());
         $this->assertStringContainsString('"vehicleCapacity":"4 Seater"', $staffPage->getContent());
+        $this->assertStringContainsString('data-reservation-action="review"', $staffPage->getContent());
+        $this->assertStringContainsString("button[data-reservation-action]", $staffPage->getContent());
+        $this->assertStringNotContainsString('onclick="viewDetailsById(', $staffPage->getContent());
     }
 
     public function test_guest_calendar_matches_user_calendar_and_does_not_duplicate_rentals(): void

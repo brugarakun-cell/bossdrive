@@ -57,3 +57,39 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
+## Deploy on Railway
+
+Railway's Railpack detects this Laravel app from `artisan`, installs Composer and
+NPM dependencies, builds the Vite assets, and starts the app. To deploy it:
+
+1. In Railway, create a project using **Deploy from GitHub repo** and select
+   this repository's `main` branch.
+2. Add a Railway PostgreSQL service to the project.
+3. Add these variables to the Laravel service. Replace `Postgres` in the
+   reference with the exact name of your PostgreSQL service.
+
+   | Variable | Value |
+   | --- | --- |
+   | `APP_ENV` | `production` |
+   | `APP_DEBUG` | `false` |
+   | `APP_KEY` | Generate locally with `php artisan key:generate --show`, then paste the result into Railway. Keep it secret. |
+   | `APP_URL` | The public Railway domain for the Laravel service, including `https://` |
+   | `DB_CONNECTION` | `pgsql` |
+   | `DB_URL` | `${{Postgres.DATABASE_URL}}` |
+   | `RAILPACK_PHP_EXTENSIONS` | `pdo_pgsql` |
+
+4. Deploy the service, then generate a public domain in its Railway
+   **Settings → Networking** section. Set `APP_URL` to that domain and redeploy
+   if necessary.
+
+Railpack runs Laravel's migrations and creates the public storage symlink when
+the service starts. Do not run the development seeder against production data.
+This app stores uploaded vehicle images, profile photos, reservation documents,
+and payment proofs on the public disk. Railway's container filesystem is
+ephemeral, so attach a persistent volume at `/app/storage/app/public` or
+configure durable object storage before accepting uploads. If using a volume,
+keep the app to one replica unless the storage solution supports shared access.
+
+Configure SMTP variables in Railway as well if the app needs to send email or
+password-reset codes.

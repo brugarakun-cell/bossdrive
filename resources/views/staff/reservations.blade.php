@@ -274,11 +274,12 @@
                                     <td><span id="status-{{ $reservation->id }}" class="status-pill {{ $statusClass }} text-uppercase">{{ ucfirst($reservation->status) }}</span></td>
                                     <td class="text-center">
                                         <div class="d-flex justify-content-center gap-2">
-                                            <button class="btn btn-sm btn-outline-danger fw-bold rounded-pill reservation-action" onclick="viewDetailsById('{{ $reservation->id }}')">Review</button>
+                                            <button class="btn btn-sm btn-outline-danger fw-bold rounded-pill reservation-action" data-reservation-action="review" data-reservation-id="{{ $reservation->id }}">Review</button>
                                             <button
                                                 id="btn-{{ $reservation->id }}"
                                                 class="btn btn-sm {{ $reservation->status === 'completed' ? 'btn-outline-success' : 'btn-dark' }} fw-bold rounded-pill reservation-action"
-                                                onclick="{{ $reservation->status === 'completed' ? 'openCompletedInspection' : 'promptRentalStatus' }}('{{ $reservation->id }}')"
+                                                data-reservation-action="{{ $reservation->status === 'completed' ? 'completed-inspection' : 'status' }}"
+                                                data-reservation-id="{{ $reservation->id }}"
                                                 style="display: {{ in_array($reservation->status, ['verified', 'processing', 'released', 'completed'], true) ? 'inline-block' : 'none' }};"
                                             >{{ $reservation->status === 'verified' ? 'Processing' : ($reservation->status === 'processing' ? 'Released' : ($reservation->status === 'released' ? 'Returned' : 'Completed')) }}</button>
                                         </div>
@@ -569,7 +570,7 @@
                 const actionLabels = {verified: 'Processing', processing: 'Released', released: 'Returned', completed: 'Completed'};
                 const actionLabel = actionLabels[status] || '';
                 const actionButton = actionLabel
-                    ? '<button id="btn-' + Number(reservation.id) + '" class="btn btn-sm ' + (status === 'completed' ? 'btn-outline-success' : 'btn-dark') + ' fw-bold rounded-pill reservation-action" onclick="' + (status === 'completed' ? 'openCompletedInspection' : 'promptRentalStatus') + '(\\'' + Number(reservation.id) + '\\')">' + actionLabel + '</button>'
+                    ? '<button id="btn-' + Number(reservation.id) + '" class="btn btn-sm ' + (status === 'completed' ? 'btn-outline-success' : 'btn-dark') + ' fw-bold rounded-pill reservation-action" data-reservation-action="' + (status === 'completed' ? 'completed-inspection' : 'status') + '" data-reservation-id="' + Number(reservation.id) + '">' + actionLabel + '</button>'
                     : '';
                 const searchData = (reservation.name + ' ' + reservation.phone + ' ' + reservation.control).toLowerCase();
 
@@ -580,7 +581,7 @@
                     '<td id="logi-' + Number(reservation.id) + '"><span class="badge ' + (reservation.service === 'Delivery' ? 'bg-primary' : 'bg-secondary') + ' rounded-pill px-3">' + escapeHtml(reservation.service) + '</span></td>' +
                     '<td><span class="pay-tag ' + paymentClass + '">' + paymentLabel + '</span></td>' +
                     '<td><span id="status-' + Number(reservation.id) + '" class="status-pill ' + staffStatusClass(status) + ' text-uppercase">' + escapeHtml(status === 'completed' ? 'Completed' : status.charAt(0).toUpperCase() + status.slice(1)) + '</span>' + (reservation.documentsNeedReview ? '<small class="d-block text-warning fw-bold">Updated ID needs review</small>' : '') + '</td>' +
-                    '<td class="text-center"><div class="d-flex justify-content-center gap-2"><button class="btn btn-sm btn-outline-danger fw-bold rounded-pill reservation-action" onclick="viewDetailsById(\\'' + Number(reservation.id) + '\\')">Review</button>' + actionButton + '</div></td>' +
+                    '<td class="text-center"><div class="d-flex justify-content-center gap-2"><button class="btn btn-sm btn-outline-danger fw-bold rounded-pill reservation-action" data-reservation-action="review" data-reservation-id="' + Number(reservation.id) + '">Review</button>' + actionButton + '</div></td>' +
                     '</tr>';
             }).join('');
         }
@@ -1184,6 +1185,21 @@
 
             noResultMsg.classList.toggle('d-none', visibleCount !== 0);
         }
+
+        document.querySelector('#reservationTable tbody').addEventListener('click', event => {
+            if (!(event.target instanceof Element)) return;
+            const button = event.target.closest('button[data-reservation-action]');
+            if (!button) return;
+
+            const id = button.dataset.reservationId;
+            if (button.dataset.reservationAction === 'review') {
+                viewDetailsById(id);
+            } else if (button.dataset.reservationAction === 'status') {
+                promptRentalStatus(id);
+            } else if (button.dataset.reservationAction === 'completed-inspection') {
+                openCompletedInspection(id);
+            }
+        });
 
         renderStaffReservations();
         updateStatCounts();
