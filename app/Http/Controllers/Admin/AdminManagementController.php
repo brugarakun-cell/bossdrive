@@ -1339,6 +1339,22 @@ class AdminManagementController extends Controller
         return back()->with('success', 'Vehicle removed.');
     }
 
+    public function destroyVehicleFeedbackReply(Vehicle $vehicle, int $feedbackIndex): JsonResponse
+    {
+        $feedbacks = $vehicle->feedbacks ?? [];
+        abort_unless(
+            is_array($feedbacks[$feedbackIndex] ?? null)
+                && is_array($feedbacks[$feedbackIndex]['adminReply'] ?? null),
+            404,
+            'Feedback reply not found.'
+        );
+
+        $feedbacks[$feedbackIndex]['adminReply'] = null;
+        $vehicle->update(['feedbacks' => $feedbacks]);
+
+        return response()->json(['feedbacks' => $vehicle->fresh()->feedbacks ?? []]);
+    }
+
     public function destroyInquiry(ContactInquiry $inquiry): RedirectResponse|JsonResponse
     {
         $inquiry->delete();
@@ -1359,6 +1375,17 @@ class AdminManagementController extends Controller
         }
 
         return back()->with('success', 'Audit log deleted.');
+    }
+
+    public function destroyPickupReport(PickupConditionReport $report): JsonResponse
+    {
+        if ($report->photo_path) {
+            Storage::disk('public')->delete($report->photo_path);
+        }
+
+        $report->delete();
+
+        return response()->json(['message' => 'Pickup condition report deleted.']);
     }
 
     public function destroyAllReportRecords(string $type): JsonResponse

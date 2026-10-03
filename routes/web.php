@@ -328,6 +328,8 @@ Route::middleware('staff')->prefix('staff')->name('staff.')->group(function () {
     Route::patch('/drivers/{driver}/availability', [AdminManagementController::class, 'updateDriverAvailability'])->name('drivers.availability');
     Route::post('/vehicles', [AdminManagementController::class, 'storeVehicle'])->name('vehicles.store');
     Route::patch('/vehicles/{vehicle}', [AdminManagementController::class, 'updateVehicle'])->name('vehicles.update');
+    Route::delete('/vehicles/{vehicle}/feedback/{feedbackIndex}/reply', [AdminManagementController::class, 'destroyVehicleFeedbackReply'])
+        ->name('vehicles.feedback.reply.destroy');
     Route::delete('/vehicles/{vehicle}', [AdminManagementController::class, 'destroyVehicle'])->name('vehicles.destroy');
     Route::get('/billing', [StaffBillingController::class, 'index'])->name('billing');
     Route::get('/billing/live', function () {
@@ -463,6 +465,8 @@ Route::middleware('admin')->prefix('admin')->name('admin.')->group(function () {
     Route::patch('/drivers/{driver}/availability', [AdminManagementController::class, 'updateDriverAvailability'])->name('drivers.availability');
     Route::post('/vehicles', [AdminManagementController::class, 'storeVehicle'])->name('vehicles.store');
     Route::patch('/vehicles/{vehicle}', [AdminManagementController::class, 'updateVehicle'])->name('vehicles.update');
+    Route::delete('/vehicles/{vehicle}/feedback/{feedbackIndex}/reply', [AdminManagementController::class, 'destroyVehicleFeedbackReply'])
+        ->name('vehicles.feedback.reply.destroy');
     Route::delete('/vehicles/{vehicle}', [AdminManagementController::class, 'destroyVehicle'])->name('vehicles.destroy');
     Route::put('/price-guide', [AdminManagementController::class, 'updatePriceGuide'])->name('price-guide.update');
     Route::get('/payment-settings', [AdminManagementController::class, 'paymentSettings'])->name('payment-settings');
@@ -472,6 +476,8 @@ Route::middleware('admin')->prefix('admin')->name('admin.')->group(function () {
     Route::delete('/users/{user}', [AdminManagementController::class, 'destroyUser'])->name('users.destroy');
     Route::get('/reports', [AdminManagementController::class, 'reports'])->name('reports');
     Route::delete('/inquiries/{inquiry}', [AdminManagementController::class, 'destroyInquiry'])->name('inquiries.destroy');
+    Route::delete('/reports/pickup-reports/{report}', [AdminManagementController::class, 'destroyPickupReport'])
+        ->name('reports.pickup.destroy');
     Route::delete('/audit-logs/{auditLog}', [AdminManagementController::class, 'destroyAuditLog'])->name('audit-logs.destroy');
     Route::delete('/reports/{type}/all', [AdminManagementController::class, 'destroyAllReportRecords'])->name('reports.delete-all');
     Route::post('/logout', [AdminAuthController::class, 'logout'])->name('logout');

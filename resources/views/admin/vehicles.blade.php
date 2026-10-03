@@ -2493,11 +2493,24 @@
                 return;
             }
 
-            v.feedbacks[idx].adminReply = null;
+            try {
+                const response = await fetch(@json($vehicleBaseUrl) + '/' + currentDetailsVehicleId + '/feedback/' + idx + '/reply', {
+                    method: 'DELETE',
+                    headers: {'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json'}
+                });
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.message || 'Could not remove the reply.');
+                }
+
+                v.feedbacks = data.feedbacks;
+            } catch (error) {
+                showToast(error.message || 'Could not remove the reply. Please try again.', 'error');
+                return;
+            }
+
             renderDetailsFeedback(v);
             showToast('Reply removed successfully!', 'success');
-
-            // TODO: dito mo ipapadala yung delete request sa Laravel backend (DELETE /api/feedback/{id}/reply)
         }
 
         function renderDamageEntries(v, containerId, readOnly) {
@@ -2653,24 +2666,32 @@
         }
 
         async function saveDamageLog(vehicle) {
-            const response = await fetch(@json($vehicleBaseUrl) + '/' + vehicle.id, {
-                method: 'PATCH',
-                headers: {'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json', 'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    name: vehicle.name,
-                    plate: vehicle.plate,
-                    price: vehicle.price,
-                    category: vehicle.category,
-                    transmission: vehicle.transmission,
-                    fuel: vehicle.fuel,
-                    capacity: vehicle.capacity,
-                    status: vehicle.status.toLowerCase(),
-                    damage_log: vehicle.damageLog,
-                    schedule: vehicle.schedule || []
-                })
-            });
-            if (!response.ok) {
-                showToast('Damage log could not be saved.', 'error');
+            try {
+                const response = await fetch(@json($vehicleBaseUrl) + '/' + vehicle.id, {
+                    method: 'PATCH',
+                    headers: {'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json', 'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        name: vehicle.name,
+                        plate: vehicle.plate,
+                        price: vehicle.price,
+                        category: vehicle.category,
+                        transmission: vehicle.transmission,
+                        fuel: vehicle.fuel,
+                        capacity: vehicle.capacity,
+                        status: vehicle.status.toLowerCase(),
+                        damage_log: vehicle.damageLog,
+                        schedule: vehicle.schedule || []
+                    })
+                });
+                if (!response.ok) {
+                    showToast('Damage log could not be saved.', 'error');
+                    return false;
+                }
+
+                return true;
+            } catch (error) {
+                showToast('Damage log could not be saved. Please try again.', 'error');
+                return false;
             }
         }
 
@@ -2682,7 +2703,14 @@
                 return;
             }
 
+            const originalDamageLog = v.damageLog;
             v.damageLog = v.damageLog.filter(function(d){ return d.id !== damageId; });
+            if (!(await saveDamageLog(v))) {
+                v.damageLog = originalDamageLog;
+                renderDetailsDamage(v);
+                renderFleet();
+                return;
+            }
             if (editingDamageId === damageId) {
                 editingDamageId = null;
                 document.getElementById('damageSubmitButton').innerHTML = '<i class="fas fa-check-circle me-2"></i>CONFIRM & LOG CONDITION';
@@ -2690,8 +2718,6 @@
             renderDetailsDamage(v);
             renderFleet();
             showToast('Damage log entry removed successfully!', 'success');
-
-            await saveDamageLog(v);
         }
 
         // ================= STAT CARDS: click to filter =================
@@ -2980,38 +3006,59 @@
                 return;
             }
 
-            scheduleEvents = scheduleEvents.filter(function(x){ return x.id !== id; });
-            renderFleet(); // keep the card banner in sync with the calendar
-            renderAdminCalendar();
-            bootstrap.Modal.getInstance(document.getElementById('scheduleFormModal')).hide();
-            showToast('Schedule entry removed successfully!', 'success');
-
             const affectedVehicle = fleet.find(function (vehicle) {
                 return (vehicle.schedule || []).some(function (entry) { return entry.id === id; });
             });
-            if (affectedVehicle) {
-                affectedVehicle.schedule = (affectedVehicle.schedule || []).filter(function (entry) { return entry.id !== id; });
-                persistVehicleSchedule(affectedVehicle.id);
+            if (!affectedVehicle) {
+                showToast('Schedule entry could not be found.', 'error');
+                return;
             }
+
+            const originalScheduleEvents = scheduleEvents;
+            const originalVehicleSchedule = affectedVehicle.schedule;
+            scheduleEvents = scheduleEvents.filter(function(x){ return x.id !== id; });
+            affectedVehicle.schedule = (affectedVehicle.schedule || []).filter(function (entry) { return entry.id !== id; });
+            if (!(await persistVehicleSchedule(affectedVehicle.id))) {
+                scheduleEvents = originalScheduleEvents;
+                affectedVehicle.schedule = originalVehicleSchedule;
+                renderFleet();
+                renderAdminCalendar();
+                return;
+            }
+
+            renderFleet();
+            renderAdminCalendar();
+            bootstrap.Modal.getInstance(document.getElementById('scheduleFormModal')).hide();
+            showToast('Schedule entry removed successfully!', 'success');
         }
 
         async function persistVehicleSchedule(vehicleId) {
             const vehicle = fleet.find(function (item) { return item.id === vehicleId; });
-            if (!vehicle) return;
+            if (!vehicle) return false;
             vehicle.schedule = scheduleEvents.filter(function (entry) { return entry.vehicleId === vehicleId; });
-            const response = await fetch(@json($vehicleBaseUrl) + '/' + vehicleId, {
-                method: 'PATCH',
-                headers: {'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json', 'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    name: vehicle.name,
-                    plate: vehicle.plate,
-                    status: vehicle.status.toLowerCase(),
-                    damage_log: vehicle.damageLog,
-                    image_path: vehicle.photo,
-                    schedule: vehicle.schedule
-                })
-            });
-            if (!response.ok) showToast('Vehicle schedule could not be saved.', 'error');
+            try {
+                const response = await fetch(@json($vehicleBaseUrl) + '/' + vehicleId, {
+                    method: 'PATCH',
+                    headers: {'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json', 'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        name: vehicle.name,
+                        plate: vehicle.plate,
+                        status: vehicle.status.toLowerCase(),
+                        damage_log: vehicle.damageLog,
+                        image_path: vehicle.photo,
+                        schedule: vehicle.schedule
+                    })
+                });
+                if (!response.ok) {
+                    showToast('Vehicle schedule could not be saved.', 'error');
+                    return false;
+                }
+
+                return true;
+            } catch (error) {
+                showToast('Vehicle schedule could not be saved. Please try again.', 'error');
+                return false;
+            }
         }
 
         document.getElementById('adminCalendarModal').addEventListener('show.bs.modal', renderAdminCalendar);

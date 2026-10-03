@@ -193,7 +193,7 @@
                                     <td class="text-muted small">{{ $reservation->vehicle }}</td>
                                     <td class="text-muted small">{{ $reservation->updated_at->format('M d, Y') }}</td>
                                     <td class="text-center"><span class="badge rounded-pill bg-secondary bg-opacity-10 text-secondary fw-bold">{{ ucfirst($reservation->payment_status ?? 'Customer Request') }}</span></td>
-                                    <td class="text-end"><button class="btn btn-outline-danger btn-sm border-0" onclick="deleteRow(this, 'Cancelled Booking')"><i class="fas fa-trash"></i></button></td>
+                                    <td class="text-end"><button class="btn btn-outline-danger btn-sm border-0" onclick="deleteRow(this, 'Cancelled Booking', '{{ route('admin.reservations.destroy', $reservation) }}')"><i class="fas fa-trash"></i></button></td>
                                 </tr>
                                 @empty
                                 <tr><td colspan="5" class="text-center text-muted py-4">No cancelled bookings in this period.</td></tr>
@@ -239,7 +239,7 @@
                                     <td class="text-muted small">{{ $reservation->vehicle }}</td>
                                     <td class="text-muted small">{{ $walkInTime->format('M d, Y | g:i A') }}</td>
                                     <td class="text-center"><span class="badge rounded-pill bg-danger bg-opacity-10 text-danger fw-bold">{{ $voidedAfter }}</span></td>
-                                    <td class="text-end"><button class="btn btn-outline-danger btn-sm border-0" onclick="deleteRow(this, 'Voided Booking')"><i class="fas fa-trash"></i></button></td>
+                                    <td class="text-end"><button class="btn btn-outline-danger btn-sm border-0" onclick="deleteRow(this, 'Voided Booking', '{{ route('admin.reservations.destroy', $reservation) }}')"><i class="fas fa-trash"></i></button></td>
                                 </tr>
                                 @empty
                                 <tr><td colspan="5" class="text-center text-muted py-4">No voided bookings in this period.</td></tr>
@@ -405,7 +405,7 @@
                                         <span class="pickup-photo-empty" title="No photo uploaded"><i class="fas fa-image"></i></span>
                                         @endif
                                     </td>
-                                    <td class="text-end"><button class="btn btn-outline-danger btn-sm border-0" onclick="deleteRow(this, 'Pickup Condition Report')"><i class="fas fa-trash"></i></button></td>
+                                    <td class="text-end"><button class="btn btn-outline-danger btn-sm border-0" onclick="deleteRow(this, 'Pickup Condition Report', '{{ route('admin.reports.pickup.destroy', $report) }}')"><i class="fas fa-trash"></i></button></td>
                                 </tr>
                                 @empty
                                 <tr><td colspan="7" class="text-center text-muted py-4">No pickup condition reports in this period.</td></tr>
@@ -581,7 +581,7 @@
         }
 
         // Delete Row with 3s Countdown Confirmation Modal & Toast
-        async function deleteRow(btn, recordName, url = null) {
+        async function deleteRow(btn, recordName, url) {
             if (!(await showConfirm('Are you sure you want to delete this ' + recordName + '?'))) {
                 showToast('Cancelled.', 'cancel');
                 return;
@@ -590,20 +590,18 @@
             const row = btn.closest('tr');
             const table = row.closest('table');
 
-            if (url) {
-                try {
-                    const response = await fetch(url, {
-                        method: 'DELETE',
-                        headers: {'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json'}
-                    });
+            try {
+                const response = await fetch(url, {
+                    method: 'DELETE',
+                    headers: {'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json'}
+                });
 
-                    if (!response.ok) {
-                        throw new Error('Delete request failed');
-                    }
-                } catch (error) {
-                    showToast('Unable to delete ' + recordName + '.', 'error');
-                    return;
+                if (!response.ok) {
+                    throw new Error('Delete request failed');
                 }
+            } catch (error) {
+                showToast('Unable to delete ' + recordName + '.', 'error');
+                return;
             }
 
             row.remove();
