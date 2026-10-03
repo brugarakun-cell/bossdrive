@@ -750,7 +750,7 @@
         }
 
         async function deleteReservation(id) {
-            if (!window.confirm('Delete this reservation and its uploaded files?')) return;
+            if (!await showConfirm('Delete this reservation and its uploaded files?', 3)) return;
             setAdminMutationLoader(true);
             try {
                 const response = await fetch('{{ url('/admin/reservations') }}/' + id, {

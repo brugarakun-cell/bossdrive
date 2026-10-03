@@ -135,6 +135,15 @@ class ReportDeletionTest extends TestCase
             ->assertJsonPath('message', 'Your administrator session has expired. Please sign in again.');
     }
 
+    public function test_urls_use_https_when_the_request_is_forwarded_through_a_secure_proxy(): void
+    {
+        $this->withHeaders(['X-Forwarded-Proto' => 'https'])
+            ->get('http://bossdrive.test/admin/login')
+            ->assertOk()
+            ->assertSee('action="https://bossdrive.test/admin/login"', false)
+            ->assertSee('https://bossdrive.test/image/banner-car.jpg', false);
+    }
+
     private function createReservation(User $user, string $status): Reservation
     {
         return Reservation::create([
