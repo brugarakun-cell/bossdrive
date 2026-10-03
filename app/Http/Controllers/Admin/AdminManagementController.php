@@ -1331,10 +1331,14 @@ class AdminManagementController extends Controller
         return back()->with('success', 'Vehicle updated.');
     }
 
-    public function destroyVehicle(Vehicle $vehicle): RedirectResponse
+    public function destroyVehicle(Request $request, Vehicle $vehicle): RedirectResponse|JsonResponse
     {
         AuditLog::record('vehicle.deleted', $vehicle, ['name' => $vehicle->name, 'plate' => $vehicle->plate]);
         $vehicle->delete();
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => 'Vehicle removed.']);
+        }
 
         return back()->with('success', 'Vehicle removed.');
     }

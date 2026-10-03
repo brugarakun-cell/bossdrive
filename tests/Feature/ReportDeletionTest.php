@@ -100,6 +100,41 @@ class ReportDeletionTest extends TestCase
         $this->assertNull($vehicle->fresh()->feedbacks[0]['adminReply']);
     }
 
+    public function test_admin_can_delete_a_completed_reservation_and_vehicle_with_json_responses(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create();
+        $vehicle = Vehicle::create([
+            'name' => 'Completed Rental Vehicle',
+            'plate' => 'COMPLETED-1',
+            'price' => 1800,
+            'status' => 'available',
+        ]);
+        $completed = $this->createReservation($user, 'completed');
+        $completed->update(['vehicle_id' => $vehicle->id]);
+
+        $this->withSession(['is_admin' => true])
+            ->deleteJson(route('admin.reservations.destroy', $completed))
+            ->assertOk()
+            ->assertJsonPath('message', 'Reservation '.$completed->control_number.' was deleted.');
+        $this->assertDatabaseMissing('reservations', ['id' => $completed->id]);
+
+        $this->withSession(['is_admin' => true])
+            ->deleteJson(route('admin.vehicles.destroy', $vehicle))
+            ->assertOk()
+            ->assertJsonPath('message', 'Vehicle removed.');
+        $this->assertDatabaseMissing('vehicles', ['id' => $vehicle->id]);
+    }
+
+    public function test_admin_json_delete_requests_receive_an_authentication_error_when_session_expires(): void
+    {
+        $reservation = $this->createReservation(User::factory()->create(), 'pending');
+
+        $this->deleteJson(route('admin.reservations.destroy', $reservation))
+            ->assertUnauthorized()
+            ->assertJsonPath('message', 'Your administrator session has expired. Please sign in again.');
+    }
+
     private function createReservation(User $user, string $status): Reservation
     {
         return Reservation::create([

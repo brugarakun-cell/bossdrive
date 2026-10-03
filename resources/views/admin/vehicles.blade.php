@@ -1737,19 +1737,14 @@
                         method: 'DELETE',
                         headers: {'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json', 'Content-Type': 'application/json'}
                     });
+                    const result = await response.json().catch(function () { return {}; });
                     if (!response.ok) {
-                        let message = 'Vehicle could not be removed.';
-                        try {
-                            const result = await response.json();
-                            message = result.message || message;
-                        } catch (error) {
-                        }
-                        showToast(message, 'error');
+                        showToast(result.message || 'Vehicle could not be removed. Please refresh and try again.', 'error');
                         return;
                     }
                     fleet = fleet.filter(function(x){ return x.id !== id; });
                     renderFleet();
-                    showToast('Vehicle removed successfully!', 'success');
+                    showToast(result.message || 'Vehicle removed successfully!', 'success');
                 } catch (error) {
                     showToast(error.message || 'Vehicle could not be removed.', 'error');
                 } finally {

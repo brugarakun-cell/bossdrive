@@ -750,29 +750,32 @@
         }
 
         async function deleteReservation(id) {
-            if (!await showConfirm('Delete this reservation and its uploaded files?', 5)) return;
+            if (!window.confirm('Delete this reservation and its uploaded files?')) return;
             setAdminMutationLoader(true);
-            let response;
             try {
-                response = await fetch('{{ url('/admin/reservations') }}/' + id, {
-                method: 'DELETE',
-                headers: {
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                }
+                const response = await fetch('{{ url('/admin/reservations') }}/' + id, {
+                    method: 'DELETE',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    }
                 });
+                const result = await response.json().catch(function () { return {}; });
+                if (!response.ok) {
+                    showToast(result.message || 'Reservation could not be deleted. Please refresh and try again.', 'error');
+                    return;
+                }
+
+                const row = document.getElementById('btn-' + id)?.closest('.res-row');
+                if (row) row.remove();
+                updateStatCounts();
+                applyFilters();
+                showToast(result.message || 'Reservation deleted.', 'success');
+            } catch (error) {
+                showToast('Could not reach the server. Reservation was not deleted.', 'error');
             } finally {
                 setAdminMutationLoader(false);
             }
-            if (!response.ok) {
-                showToast('Reservation could not be deleted.', 'error');
-                return;
-            }
-            const row = document.getElementById('btn-' + id)?.closest('.res-row');
-            if (row) row.remove();
-            updateStatCounts();
-            applyFilters();
-            showToast('Reservation deleted.', 'success');
         }
         let verificationModal;
         let customConfirmModal;
