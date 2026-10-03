@@ -26,6 +26,8 @@ class WalkInDriverAssignmentTest extends TestCase
         foreach ($documentPaths as $path) {
             Storage::disk('public')->put($path, 'test document image');
         }
+        $paymentProofPath = 'reservations/payments/customer-payment.png';
+        Storage::disk('public')->put($paymentProofPath, 'payment proof image');
 
         $user = User::factory()->create(['role' => 'user']);
         $vehicle = $this->createVehicle('DOC 3001');
@@ -39,6 +41,7 @@ class WalkInDriverAssignmentTest extends TestCase
             'pickup_date' => now()->addDays(10)->toDateString(),
             'return_date' => now()->addDays(11)->toDateString(),
             'document_paths' => $documentPaths,
+            'payment_proof_path' => $paymentProofPath,
             'privacy_consent' => true,
             'payment_mode' => 'deposit',
             'control_number' => 'USER-DOCS-0001',
@@ -59,7 +62,9 @@ class WalkInDriverAssignmentTest extends TestCase
             ->assertDontSee('staffVerificationDocuments')
             ->assertDontSee('customer-license.jpg')
             ->assertDontSee('customer-id.png')
-            ->assertDontSee('customer-billing.webp');
+            ->assertDontSee('customer-billing.webp')
+            ->assertSee('staffPaymentProof')
+            ->assertSee('customer-payment.png');
 
         $this->assertStringContainsString('"bookingSource":"user"', $adminPage->getContent());
         $this->assertStringNotContainsString('customer-license.jpg', $staffPage->getContent());
@@ -70,7 +75,8 @@ class WalkInDriverAssignmentTest extends TestCase
             ->assertJsonMissingPath('0.documents')
             ->assertDontSee('customer-license.jpg')
             ->assertDontSee('customer-id.png')
-            ->assertDontSee('customer-billing.webp');
+            ->assertDontSee('customer-billing.webp')
+            ->assertJsonPath('0.paymentProof', asset('storage/'.$paymentProofPath));
 
         $this->withSession(['is_admin' => true])
             ->getJson(route('admin.reservations.live'))

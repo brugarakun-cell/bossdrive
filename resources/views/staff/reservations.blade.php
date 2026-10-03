@@ -50,6 +50,7 @@
         #verifyModal .modal-body { overflow-x: hidden; padding: 1.25rem !important; }
         #verifyModal .row > [class*="col-"] { min-width: 0; }
         .doc-preview { display: block; width: 100% !important; max-width: 100%; height: 110px !important; object-fit: cover; border-radius: 8px; border: 1px solid #eee; transition: 0.3s; cursor: zoom-in; }
+        #staffPaymentProof { height: 120px !important; max-width: 100%; object-fit: contain; }
         #mPaymentProof { height: 120px !important; max-width: 100%; object-fit: contain; }
         .status-pill { font-size: 0.7rem; font-weight: 800; padding: 4px 12px; border-radius: 50px; text-transform: uppercase; display: inline-block; }
         .status-pill.status-completed { background: #eefdf5; color: #198754; border: 1px solid #198754; }
@@ -334,7 +335,13 @@
                             <label class="info-label">Remaining Balance</label><span class="info-value text-danger" id="mBalance"></span>
                             <label class="info-label">Total Rental Payment</label><span class="info-value fw-bold" id="mTotal"></span>
                             <label class="info-label">Transaction Ref</label><span class="info-value" id="mRef"></span>
-
+                            <div class="text-center mt-3">
+                                <small class="fw-bold d-block mb-1 text-muted">Payment Screenshot</small>
+                                <a id="staffPaymentProofLink" href="#" target="_blank" rel="noopener" class="d-none">
+                                    <img id="staffPaymentProof" class="doc-preview" alt="Payment receipt" loading="lazy">
+                                </a>
+                                <span id="staffPaymentProofMissing" class="small text-muted">No payment screenshot is available.</span>
+                            </div>
                         </div>
                     </div>
 
@@ -453,6 +460,10 @@
                     'balance' => '₱'.number_format(max((float) $reservation->total_amount - (float) $reservation->paid_amount, 0), 2),
                     'total' => '₱'.number_format((float) $reservation->total_amount, 2),
                     'ref' => $reservation->payment_reference_id ?: 'No reference',
+                    'paymentProof' => $reservation->payment_proof_path
+                        && \Illuminate\Support\Facades\Storage::disk('public')->exists($reservation->payment_proof_path)
+                            ? asset('storage/'.$reservation->payment_proof_path)
+                            : null,
                     'documentsVerified' => (bool) $documentsVerified,
                     'pickupConditionReport' => $reservation->pickupConditionReports
                         ->sortByDesc('created_at')
@@ -578,6 +589,7 @@
                 balance: '₱' + Number(reservation.balance).toLocaleString('en-PH', {minimumFractionDigits: 2}),
                 total: '₱' + Number(reservation.totalAmount).toLocaleString('en-PH', {minimumFractionDigits: 2}),
                 ref: reservation.reference,
+                paymentProof: reservation.paymentProof,
                 documentsVerified: reservation.documentsVerified,
                 documentsNeedReview: reservation.documentsNeedReview,
                 documents: reservation.documents,
@@ -649,6 +661,24 @@
             document.getElementById('mReturnSchedule').innerText = [reservation.returnDate, reservation.returnTime].filter(Boolean).join(' at ') || 'Not provided';
             document.getElementById('mVehicleUnit').innerText = [reservation.vehicle, reservation.vehiclePlate ? 'Plate: ' + reservation.vehiclePlate : null].filter(Boolean).join(' — ') || 'Not provided';
             document.getElementById('mVehicleSpecs').innerText = [reservation.vehicleCategory, reservation.vehicleTransmission, reservation.vehicleFuel, reservation.vehicleCapacity].filter(Boolean).join(' · ') || 'Not provided';
+            setStaffPaymentProofPreview(reservation.paymentProof);
+        }
+
+        function setStaffPaymentProofPreview(url) {
+            const image = document.getElementById('staffPaymentProof');
+            const link = document.getElementById('staffPaymentProofLink');
+            const missing = document.getElementById('staffPaymentProofMissing');
+            const isImage = typeof url === 'string' && /\.(jpe?g|png|webp|gif)(?:[?#].*)?$/i.test(url);
+
+            image.onerror = () => {
+                image.removeAttribute('src');
+                link.classList.add('d-none');
+                missing.classList.remove('d-none');
+            };
+            image.src = isImage ? url : '';
+            link.href = isImage ? url : '#';
+            link.classList.toggle('d-none', !isImage);
+            missing.classList.toggle('d-none', isImage);
         }
 
         function showCustomConfirm(message, callback) {
