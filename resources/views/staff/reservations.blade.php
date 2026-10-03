@@ -338,33 +338,6 @@
                         </div>
                     </div>
 
-                    <div id="staffVerificationDocuments" class="border rounded-3 bg-light p-3 mt-3">
-                        <h6 class="fw-bold text-danger mb-3 text-uppercase small"><i class="fas fa-file-alt me-2"></i>User-Submitted Documents</h6>
-                        <div class="row g-3">
-                            <div class="col-4" id="staffDriverLicenseWrap">
-                                <small class="fw-bold text-muted d-block mb-1">Driver's License</small>
-                                <a id="staffDriverLicenseLink" href="#" target="_blank" rel="noopener" class="d-none">
-                                    <img id="staffDriverLicense" class="doc-preview" alt="Driver's License" loading="lazy">
-                                </a>
-                                <span id="staffDriverLicenseMissing" class="small text-muted">File is missing. Ask the customer to upload it again.</span>
-                            </div>
-                            <div class="col-4" id="staffValidIdWrap">
-                                <small class="fw-bold text-muted d-block mb-1">Government ID</small>
-                                <a id="staffValidIdLink" href="#" target="_blank" rel="noopener" class="d-none">
-                                    <img id="staffValidId" class="doc-preview" alt="Government ID" loading="lazy">
-                                </a>
-                                <span id="staffValidIdMissing" class="small text-muted">File is missing. Ask the customer to upload it again.</span>
-                            </div>
-                            <div class="col-4" id="staffProofOfBillingWrap">
-                                <small class="fw-bold text-muted d-block mb-1">Proof of Billing</small>
-                                <a id="staffProofOfBillingLink" href="#" target="_blank" rel="noopener" class="d-none">
-                                    <img id="staffProofOfBilling" class="doc-preview" alt="Proof of Billing" loading="lazy">
-                                </a>
-                                <span id="staffProofOfBillingMissing" class="small text-muted">File is missing. Ask the customer to upload it again.</span>
-                            </div>
-                        </div>
-                    </div>
-
                     <div id="driverInfoBox" class="driver-assign-box d-none">
                         <h6 class="fw-bold text-danger mb-2 text-uppercase small"><i class="fas fa-id-badge me-2"></i>Assigned Driver</h6>
                         <div class="border rounded-3 p-3 bg-light">
@@ -481,20 +454,6 @@
                     'total' => '₱'.number_format((float) $reservation->total_amount, 2),
                     'ref' => $reservation->payment_reference_id ?: 'No reference',
                     'documentsVerified' => (bool) $documentsVerified,
-                    'documents' => collect($reservation->document_paths ?? [])->map(function ($path) {
-                        if (! is_string($path) || blank($path)) {
-                            return null;
-                        }
-                        if (filter_var($path, FILTER_VALIDATE_URL)) {
-                            return $path;
-                        }
-
-                        $path = ltrim($path, '/');
-
-                        return \Illuminate\Support\Facades\Storage::disk('public')->exists($path)
-                            ? asset('storage/'.$path)
-                            : null;
-                    }),
                     'pickupConditionReport' => $reservation->pickupConditionReports
                         ->sortByDesc('created_at')
                         ->map(fn ($report) => [
@@ -685,26 +644,11 @@
                 reservation.controlNumber, reservation.isWalkIn, reservation.email,
                 reservation.assignedDriverName, reservation.assignedDriverContact
             );
-            document.getElementById('staffVerificationDocuments').classList.toggle('d-none', reservation.isWalkIn);
             document.getElementById('mDeliveryNotes').innerText = reservation.deliveryNotes || 'None';
-            setStaffDocumentPreview('staffDriverLicense', 'staffDriverLicenseLink', 'staffDriverLicenseMissing', reservation.documents?.driver_license);
-            setStaffDocumentPreview('staffValidId', 'staffValidIdLink', 'staffValidIdMissing', reservation.documents?.valid_id);
-            setStaffDocumentPreview('staffProofOfBilling', 'staffProofOfBillingLink', 'staffProofOfBillingMissing', reservation.documents?.proof_of_billing);
             document.getElementById('mPickupSchedule').innerText = [reservation.pickupDate, reservation.pickupTime].filter(Boolean).join(' at ') || 'Not provided';
             document.getElementById('mReturnSchedule').innerText = [reservation.returnDate, reservation.returnTime].filter(Boolean).join(' at ') || 'Not provided';
             document.getElementById('mVehicleUnit').innerText = [reservation.vehicle, reservation.vehiclePlate ? 'Plate: ' + reservation.vehiclePlate : null].filter(Boolean).join(' — ') || 'Not provided';
             document.getElementById('mVehicleSpecs').innerText = [reservation.vehicleCategory, reservation.vehicleTransmission, reservation.vehicleFuel, reservation.vehicleCapacity].filter(Boolean).join(' · ') || 'Not provided';
-        }
-
-        function setStaffDocumentPreview(imageId, linkId, missingId, url) {
-            const image = document.getElementById(imageId);
-            const link = document.getElementById(linkId);
-            const missing = document.getElementById(missingId);
-            const isImage = typeof url === 'string' && /\.(jpe?g|png|webp|gif)(?:[?#].*)?$/i.test(url);
-            image.src = isImage ? url : '';
-            link.href = isImage ? url : '#';
-            link.classList.toggle('d-none', !isImage);
-            missing.classList.toggle('d-none', isImage);
         }
 
         function showCustomConfirm(message, callback) {

@@ -15,7 +15,7 @@ class WalkInDriverAssignmentTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_admin_and_staff_reservation_reviews_show_documents_uploaded_by_users(): void
+    public function test_only_admin_reservation_reviews_show_documents_uploaded_by_users(): void
     {
         Storage::fake('public');
         $documentPaths = [
@@ -53,16 +53,31 @@ class WalkInDriverAssignmentTest extends TestCase
             ->assertSee('customer-id.png')
             ->assertSee('customer-billing.webp');
 
-        $this->withSession(['is_staff' => true])
+        $staffPage = $this->withSession(['is_staff' => true])
             ->get(route('staff.reservations'))
             ->assertOk()
-            ->assertSee('staffVerificationDocuments')
-            ->assertSee('setStaffDocumentPreview')
-            ->assertSee('customer-license.jpg')
-            ->assertSee('customer-id.png')
-            ->assertSee('customer-billing.webp');
+            ->assertDontSee('staffVerificationDocuments')
+            ->assertDontSee('customer-license.jpg')
+            ->assertDontSee('customer-id.png')
+            ->assertDontSee('customer-billing.webp');
 
         $this->assertStringContainsString('"bookingSource":"user"', $adminPage->getContent());
+        $this->assertStringNotContainsString('customer-license.jpg', $staffPage->getContent());
+
+        $this->withSession(['is_staff' => true, 'is_admin' => false])
+            ->getJson(route('staff.reservations.live'))
+            ->assertOk()
+            ->assertJsonMissingPath('0.documents')
+            ->assertDontSee('customer-license.jpg')
+            ->assertDontSee('customer-id.png')
+            ->assertDontSee('customer-billing.webp');
+
+        $this->withSession(['is_admin' => true])
+            ->getJson(route('admin.reservations.live'))
+            ->assertOk()
+            ->assertJsonPath('0.documents.driver_license', asset('storage/'.$documentPaths['driver_license']))
+            ->assertJsonPath('0.documents.valid_id', asset('storage/'.$documentPaths['valid_id']))
+            ->assertJsonPath('0.documents.proof_of_billing', asset('storage/'.$documentPaths['proof_of_billing']));
     }
 
     public function test_missing_uploaded_documents_are_not_rendered_as_broken_admin_or_staff_image_links(): void
@@ -99,11 +114,18 @@ class WalkInDriverAssignmentTest extends TestCase
             ->assertSee('"valid_id":null', false)
             ->assertSee('"proof_of_billing":null', false);
 
-        $this->withSession(['is_staff' => true])
+        $this->withSession(['is_staff' => true, 'is_admin' => false])
             ->get(route('staff.reservations'))
             ->assertOk()
-            ->assertSee('File is missing. Ask the customer to upload it again.')
-            ->assertSee('"driver_license":null', false);
+            ->assertDontSee('File is missing. Ask the customer to upload it again.')
+            ->assertDontSee('"driver_license":null', false)
+            ->assertDontSee('missing-license.png');
+
+        $this->withSession(['is_staff' => true, 'is_admin' => false])
+            ->getJson(route('staff.reservations.live'))
+            ->assertOk()
+            ->assertJsonMissingPath('0.documents')
+            ->assertDontSee('missing-license.png');
 
         $this->actingAs($user)
             ->get(route('user.dashboard'))

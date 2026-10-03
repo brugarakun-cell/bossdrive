@@ -156,8 +156,9 @@ class AdminManagementController extends Controller
         $query = Reservation::with(['user', 'pickupConditionReports', 'vehicleUnit'])->latest();
         $query->where('booking_source', $request->boolean('walkin') ? 'admin_staff' : 'user');
         $reservations = $query->get();
+        $includeDocuments = $request->session()->get('is_admin') === true;
 
-        return response()->json($reservations->map(function (Reservation $reservation) {
+        return response()->json($reservations->map(function (Reservation $reservation) use ($includeDocuments) {
             $user = $reservation->user;
             $vehicle = $reservation->vehicleUnit;
             $days = $reservation->rentalDays();
@@ -173,7 +174,7 @@ class AdminManagementController extends Controller
                 && (! $user->documents_rejected_at
                     || $user->documents_rejected_at <= $user->documents_verified_at));
 
-            return [
+            $row = [
                 'id' => $reservation->id,
                 'vehicleId' => $reservation->vehicle_id,
                 'vehicle' => $reservation->vehicle,
@@ -216,7 +217,6 @@ class AdminManagementController extends Controller
                 'pickupTime' => $reservation->pickup_time ? substr($reservation->pickup_time, 0, 5) : null,
                 'returnDate' => $reservation->return_date?->format('F j, Y'),
                 'returnTime' => $reservation->return_time ? substr($reservation->return_time, 0, 5) : null,
-                'documents' => collect($reservation->document_paths ?? [])->map(fn ($path) => $this->uploadedFileUrl($path)),
                 'paymentProof' => $this->uploadedFileUrl($reservation->payment_proof_path),
                 'returnCondition' => [
                     'checks' => $reservation->return_condition_checks ?? [],
@@ -234,6 +234,13 @@ class AdminManagementController extends Controller
                         'date' => $report->created_at?->format('M j, Y g:i A'),
                     ])->first(),
             ];
+
+            if ($includeDocuments) {
+                $row['documents'] = collect($reservation->document_paths ?? [])
+                    ->map(fn ($path) => $this->uploadedFileUrl($path));
+            }
+
+            return $row;
         })->values());
     }
 
